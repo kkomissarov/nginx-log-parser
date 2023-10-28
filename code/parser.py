@@ -42,7 +42,7 @@ def _get_referer(log: str) -> str | None:
 
 
 def _get_user_agent(log: str) -> str:
-    return log.split(' "')[-2]
+    return log.split(' "')[-2].strip('"')
 
 
 def parse_log(log: str) -> LogData:
