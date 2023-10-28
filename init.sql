@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS nginx_logs(
-    id BIGSERIAL PRIMARY KEY,
+    id UUID DEFAULT gen_random_uuid(),
     hash CHAR(64) UNIQUE NOT NULL,
     created TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     ip INET NOT NULL,
