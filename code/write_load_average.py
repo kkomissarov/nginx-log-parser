@@ -1,3 +1,5 @@
+import datetime
+import datetime as dt
 import sys
 import time
 import requests
@@ -16,32 +18,66 @@ def get_la():
 
     return la
 
-def get_response_time():
+def get_healthcheck_data():
     url = 'https://api.waveservice.ru/v3/healthcheck'
     start = time.monotonic()
+
+    request_started_at = dt.datetime.now(datetime.UTC)
     r = requests.get(url)
     if r.status_code != 200:
         raise Exception('Bad request from the server')
+
+    data = r.json()
+
+
     stop = time.monotonic()
-    return stop - start
+
+    return {
+        'request_started_at': request_started_at,
+        'response_time': stop - start,
+        'db_ping': data['db_ping'],
+        'total_business_logic_exec': data['total'],
+    }
 
 
-def write_results(la, response_time):
+def write_results(la, response_time, request_started_at, db_ping, total_business_logic_exec):
     sql = '''
-        INSERT INTO load_average(created, load_average, response_time) 
+        INSERT INTO load_average(
+            created, 
+            load_average, 
+            response_time, 
+            request_started_at, 
+            db_ping,
+            total_business_logic_exec
+        ) 
         VALUES (
             now(), 
             %(la)s, 
-            %(response_time)s
+            %(response_time)s,
+            %(request_started_at)s,
+            %(db_ping)s,
+            %(total_business_logic_exec)s
         );
     '''
     with db_connection() as conn:
         with conn.cursor() as cursor:
-            cursor.execute(sql, {'la': la, 'response_time': response_time})
+            cursor.execute(sql, {
+                'la': la,
+                'response_time': response_time,
+                'request_started_at': request_started_at,
+                'db_ping': db_ping,
+                'total_business_logic_exec': total_business_logic_exec,
+            })
         conn.commit()
 
 
 if __name__ == '__main__':
     la = get_la()
-    response_time = get_response_time()
-    write_results(la, response_time)
+    healthcheck_data = get_healthcheck_data()
+    write_results(
+        la=la,
+        response_time=healthcheck_data['response_time'],
+        request_started_at=healthcheck_data['request_started_at'],
+        db_ping=healthcheck_data['db_ping'],
+        total_business_logic_exec=healthcheck_data['total_business_logic_exec'],
+    )
